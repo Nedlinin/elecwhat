@@ -28,7 +28,7 @@ import { Dbus } from "./dbus.mjs";
 import { url } from "node:inspector";
 
 const defaultUserAgent =
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+  "Mozilla/5.0 (Wayland; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.7559.96 Safari/537.36";
 
 function handleWhatsAppProtocol(window, url) {
   const webUrl = convertWhatsAppUrl(url);

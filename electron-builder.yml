@@ -1,5 +1,8 @@
 appId: "fr.carru.elecwhat"
 
+asarUnpack:
+  - node_modules/@img/sharp-libvips-*/**
+
 linux:
   # https://www.electron.build/app-builder-lib.interface.linuxconfiguration#target
   # AppImage, flatpak, snap, deb, rpm, freebsd, pacman, p5p, apk, 7z, zip, tar.xz, tar.lz, tar.gz, tar.bz2, dir.
