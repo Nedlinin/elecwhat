@@ -14,25 +14,26 @@
   "scripts": {
     "start": "electron .",
     "debug": "electron --inspect-brk=9229 .",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test tests/*.test.mjs",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "release": "electron-builder",
-    "postinstall": "patch-package && electron-builder install-app-deps"
+    "postinstall": "patch-package && electron-builder install-app-deps",
+    "test:electron": "electron tests/electron-smoke.mjs"
   },
   "license": "GPL-3.0-or-later",
   "devDependencies": {
-    "electron": "^42.11.3",
-    "electron-builder": "^26.15.7",
+    "electron": "^45.0.0",
+    "electron-builder": "26.18.0",
     "patch-package": "^8.0.1",
-    "prettier": "^3.8.1"
+    "prettier": "^3.9.10"
   },
   "dependencies": {
-    "@homebridge/dbus-native": "^0.7.2",
+    "@homebridge/dbus-native": "^0.7.9",
     "consola": "^3.4.2",
-    "electron-context-menu": "^4.1.2",
+    "electron-context-menu": "^5.1.0",
     "jsonc-parser": "^3.3.1",
-    "lodash-es": "^4.17.23",
-    "sharp": "^0.34.5"
+    "lodash-es": "^4.18.1",
+    "sharp": "^0.35.5"
   }
 }

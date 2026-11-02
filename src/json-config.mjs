@@ -13,7 +13,7 @@ export class JsonConfig {
   constructor(filePath, defaultData = {}) {
     this.#filePath = filePath;
     this.data = {};
-    this.#rawText = "{}";
+    this.#rawText = JSON.stringify(defaultData, null, 2);
     this.#parseError = null;
     this.#load(defaultData);
   }
@@ -31,6 +31,8 @@ export class JsonConfig {
   }
 
   set(key, value) {
+    // Preserve invalid files so the user can repair them without losing settings.
+    if (this.#parseError) return;
     this.data[key] = value;
     this.#rawText = applyEdits(this.#rawText, modify(this.#rawText, [key], value, { formattingOptions }));
     this.#save();
@@ -42,18 +44,22 @@ export class JsonConfig {
       return;
     }
 
-    this.#rawText = readFileSync(this.#filePath, "utf-8");
-
-    const errors = [];
-    const parsed = parseJsonc(this.#rawText, errors, { allowTrailingComma: true });
-
-    if (errors.length > 0) {
-      const [{ error, offset }] = errors;
-      this.#parseError = new Error(`${printParseErrorCode(error)} at offset ${offset}`);
+    try {
+      this.#rawText = readFileSync(this.#filePath, "utf-8");
+      const errors = [];
+      const parsed = parseJsonc(this.#rawText, errors, { allowTrailingComma: true });
+      if (errors.length > 0) {
+        const [{ error, offset }] = errors;
+        throw new Error(`${printParseErrorCode(error)} at offset ${offset}`);
+      }
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("Config must be a JSON object");
+      }
+      this.data = parsed;
+    } catch (err) {
+      this.#parseError = err;
       consola.warn(`Config parse error in ${this.#filePath}:`, this.#parseError.message);
       this.data = { ...defaultData };
-    } else {
-      this.data = parsed ?? { ...defaultData };
     }
   }
 
