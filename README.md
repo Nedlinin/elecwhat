@@ -5,6 +5,7 @@
 
 ## Features
 * Desktop notifications
+* Calls / Videos calls working (you need to join WhatsApp Web Beta)
 * Tray icon with unread count (aka AppIndicator), [custom tray icons](https://github.com/piec/elecwhat/issues/30#issuecomment-3470456738).
 * Custom keyboard shortcuts ([default](https://github.com/piec/elecwhat/blob/master/src/keys.mjs))
 * Custom CSS

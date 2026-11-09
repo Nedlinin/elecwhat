@@ -19,25 +19,54 @@ jobs:
 
     steps:
       - name: Check out Git repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           lfs: true
 
-      - name: Install Node.js, NPM and Yarn
-        uses: actions/setup-node@v4
+      - name: Install Node.js and npm
+        uses: actions/setup-node@v7
         with:
-          node-version: "22.x"
+          node-version: "24.x"
 
       - run: sudo apt install -y libarchive-tools
       - run: sudo snap install snapcraft --classic
-      - run: sudo snap install multipass --beta --classic
+
+      # snapcraft needs an isolated build env; LXD, not multipass (multipass's
+      # socket permissions don't take effect within a single CI job — see
+      # electron-builder.yml). `sg lxd` below runs the build with the lxd
+      # group active without needing a fresh login.
+      - name: Set up LXD
+        run: |
+          sudo snap install lxd
+          sudo lxd waitready
+          sudo lxd init --auto
+          sudo usermod -a -G lxd "$USER"
+
+          # GitHub Actions runners have Docker pre-installed, and Docker's
+          # DOCKER-USER iptables chain drops forwarded traffic on *other*
+          # bridges (like lxdbr0) by default — the LXD VM snapcraft launches
+          # then has no network access to fetch/build anything.
+          # https://documentation.ubuntu.com/lxd/en/latest/howto/network_bridge_firewalld/
+          sudo iptables  -I DOCKER-USER -i lxdbr0 -j ACCEPT
+          sudo ip6tables -I DOCKER-USER -i lxdbr0 -j ACCEPT
+          sudo iptables  -I DOCKER-USER -o lxdbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+          sudo ip6tables -I DOCKER-USER -o lxdbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 
       - run: npm ci
-      # dist
-      - run: npm run release
+      - run: npm test
+      - run: dbus-run-session -- xvfb-run -a npm run test:electron
+
+      - run: sg lxd -c "npx electron-builder --linux snap"
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+
+      - run: npx electron-builder --linux AppImage pacman deb rpm tar.xz
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Print SHA256 digests of built files
+        run: find ./dist -maxdepth 1 -type f | sort | xargs sha256sum
 
       - env:
           BUILDKITE_TOKEN: ${{ secrets.BUILDKITE_TOKEN }}

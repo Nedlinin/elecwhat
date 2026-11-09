@@ -15,6 +15,7 @@ import {
   getUnreadCountFromFavicon,
   convertWhatsAppUrl,
   urlScheme,
+  defaultQuitOnClose,
 } from "./util.mjs";
 import contextMenu from "electron-context-menu";
 import { debounce } from "lodash-es";
@@ -26,7 +27,7 @@ import { defaultKeys } from "./keys.mjs";
 import { Dbus } from "./dbus.mjs";
 
 const defaultUserAgent =
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36";
 
 function handleWhatsAppProtocol(window, url) {
   const webUrl = convertWhatsAppUrl(url);
@@ -39,6 +40,7 @@ function handleWhatsAppProtocol(window, url) {
 }
 
 function main() {
+  consola.info("electron", process.versions.electron);
   const config = new JsonConfig(path.join(app.getPath("userData"), "config.json"));
 
   // Configure log level: CLI option takes priority over config option
@@ -75,7 +77,7 @@ function main() {
     },
   };
 
-  if (config.get("quit-on-close", false)) {
+  if (config.get("quit-on-close", defaultQuitOnClose)) {
     state.showAtStartup = true;
   }
 
@@ -138,7 +140,7 @@ function main() {
     });
 
     const saveBounds = () => {
-      if (!isDebug) {
+      if (!isDebug && !mainWindow.isMinimized()) {
         persistState.set("window-bounds", mainWindow.getBounds());
       }
     };
@@ -156,7 +158,7 @@ function main() {
     });
 
     mainWindow.on("close", function (event) {
-      if (config.get("quit-on-close", false)) {
+      if (config.get("quit-on-close", defaultQuitOnClose)) {
         app.quit();
       } else {
         consola.debug(`close ${app.isQuiting}`);
@@ -220,6 +222,17 @@ function main() {
             toggleVisibility(mainWindow);
           },
         },
+        {
+          label: translations?.quit_on_close ?? "Quit on close",
+          type: "checkbox",
+          checked: config.get("quit-on-close", defaultQuitOnClose),
+          click: (menuItem) => {
+            config.set("quit-on-close", menuItem.checked);
+            // Linux tray icons don't always redraw a toggled checkbox on their own.
+            tray.setContextMenu(trayContextMenu);
+          },
+        },
+        { type: "separator" },
         {
           label: translations?.quit ?? "Quit",
           type: "normal",
@@ -349,7 +362,7 @@ function main() {
 
   app.setAboutPanelOptions({
     applicationName: pkg.name,
-    applicationVersion: app.getVersion(),
+    applicationVersion: `${app.getVersion()} (electronjs ${process.versions.electron})`,
     authors: [pkg?.author?.name],
     website: pkg?.homepage,
     // iconPath: "static/app.png", does not work when packaged

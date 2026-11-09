@@ -1,5 +1,17 @@
 appId: "fr.carru.elecwhat"
 
+# Without an explicit allowlist, electron-builder packs the whole project
+# root into app.asar by default — including dotfiles like .vscode/ and
+# .claude/, and any stray untracked files that happen to be sitting there
+# (this is how a leftover dev-machine elecwhat.desktop and a whole
+# usr/share/applications/ tree ended up shipped inside the app).
+files:
+  - src/**/*
+  - src-web/**/*
+  - static/**/*
+  - locales/**/*
+  - package.json
+
 # https://sharp.pixelplumbing.com/install/#electron-builder
 asar: true
 asarUnpack:
@@ -7,6 +19,12 @@ asarUnpack:
   - "**/node_modules/@img/**/*"
 
 linux:
+  # Electron uses desktopName (set in package.json) as its app_id/WM_CLASS;
+  # this makes the generated .desktop file's basename match it too, so
+  # desktop environments can associate running windows with the launcher
+  # entry (taskbar/alt-tab/window-frame icon).
+  # https://www.electron.build/linux#window-association-desktopname--syncdesktopname
+  syncDesktopName: true
   # https://www.electron.build/app-builder-lib.interface.linuxconfiguration#target
   # AppImage, flatpak, snap, deb, rpm, freebsd, pacman, p5p, apk, 7z, zip, tar.xz, tar.lz, tar.gz, tar.bz2, dir.
   target:
@@ -24,6 +42,9 @@ linux:
       Name: ElecWhat
       GenericName: WhatsApp Client
       Comment: Simple WhatsApp client
+      # Prevent GNOME Shell context menu "New Window"
+      SingleMainWindow: "true"
+
 
   # Register "whatsapp:" url scheme
   mimeTypes:
@@ -32,39 +53,44 @@ linux:
 publish:
   - github
 
-snap:
-  title: ElecWhat
-  description: |
-    Simple Whatsapp client for linux
-  publish:
-    - github
-    - snapStore
-  slots:
-    dbus-svc:
-      interface: dbus
-      bus: session
-      name: "fr.carru.elecwhat"
-  plugs:
-    # Electron app from https://snapcraft.io/docs/desktop-interfaces
-    desktop:
-    desktop-legacy:
-    wayland:
-    unity7:
-    # alsa:
-    # avahi-observe:
-    browser-support:
-    camera:
-    # cups-control:
-    gsettings:
-    home:
-    network:
-    opengl:
-    audio-playback:
-    # screen-inhibit-control:
-    # upower-observe:
+snapcraft:
+  base: core24
+  core24:
+    title: ElecWhat
+    description: |
+      Simple Whatsapp client for linux
+    # snapcraft CLI needs an isolated build env. LXD, not multipass: multipass's
+    # build socket permissions don't take effect within a single CI job (group
+    # membership is only refreshed on a fresh login) — a long-standing,
+    # unresolved issue (https://github.com/canonical/multipass/issues/1075).
+    # CI works around the same "needs a fresh login" problem for LXD's own
+    # group by wrapping the build command in `sg lxd -c '...'` (see build.yml).
+    useLXD: true
+    stagePackages: ["default", "libx11-xcb1"]
+    publish:
+      - github
+      - snapStore
+    slots:
+      dbus-svc:
+        interface: dbus
+        bus: session
+        name: "fr.carru.elecwhat"
+    plugs:
+      # The "gnome" extension (default on core24) already supplies:
+      # desktop, desktop-legacy, gsettings, opengl, wayland, x11
+      # and wires up the modern gnome-46-2404 / mesa-2404 content snaps.
+      unity7:
+      alsa:
+      # avahi-observe:
+      browser-support:
+      camera:
+      # cups-control:
+      home:
+      network:
+      audio-playback:
+      # screen-inhibit-control:
+      # upower-observe:
 
-    # additional
-    dbus:
-    x11:
-    pulseaudio:
-    audio-record:
+      # additional
+      pulseaudio:
+      audio-record:
